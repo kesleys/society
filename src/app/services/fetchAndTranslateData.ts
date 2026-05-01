@@ -1,5 +1,10 @@
+// Documentação: Esta linha especial ensina o TypeScript a reconhecer as variáveis do Vite
+/// <reference types="vite/client" />
+
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
+
+// ... (todo o resto do teu código que está aqui no meio continua igual) ...
 
 // ---------------------------------------------------------------------------
 // Constants (mirror of Dart constants/rating_calculator.dart)
@@ -150,9 +155,28 @@ const PT_MONTHS_FULL = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+
+// Documentação: Helper para gerar a URL do avatar do jogador de forma 100% segura.
 function avatarFor(name: string, icon?: string | null): string {
   const trimmed = (icon || "").trim();
-  if (trimmed) return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  
+  if (trimmed) {
+    // Etapa 1: Limpa o caminho da imagem para garantir que NÃO começa com uma barra.
+    // Exemplo: "/assets/cr7.png" ou "assets/cr7.png" vão transformar-se sempre em "assets/cr7.png"
+    const cleanPath = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
+    
+    // Etapa 2: Acessa a variável do Vite (o erro TypeScript sumiu graças à linha 1)
+    const baseUrl = import.meta.env.BASE_URL; // Ex: "/society/" ou "/"
+    
+    // Etapa 3: Junta os dois textos verificando as barras de forma inteligente
+    if (baseUrl.endsWith("/")) {
+      return `${baseUrl}${cleanPath}`; // Se já tem barra no fim, junta direto
+    } else {
+      return `${baseUrl}/${cleanPath}`; // Se não tem barra, adicionamos uma no meio
+    }
+  }
+  
+  // Documentação: Fallback caso o jogador não tenha foto configurada
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "?")}&background=2D2D30&color=D4D4D4`;
 }
 
