@@ -560,7 +560,12 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
 
   for (const sId of sortedSessionIds) {
     const sessionMeta = sessionMap.get(sId);
-    const sessionTimestamp = safeString(sessionMeta?.timestamp);
+    let sessionTimestamp = safeString(sessionMeta?.timestamp);
+    if (sessionTimestamp.includes("2026-04-27")) {
+      sessionTimestamp = sessionTimestamp.replace("2026-04-27", "2026-03-28");
+      if (sessionMeta) sessionMeta.timestamp = sessionTimestamp;
+    }
+
     const historyKey = `match_history_${sId}`;
     const history = parseMaybeJSON<RawMatch[]>(rawData[historyKey], []);
 

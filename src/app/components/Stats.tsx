@@ -80,17 +80,31 @@ export function Stats() {
   const [selected, setSelected] = useState<Player | null>(null);
 
   const range = useMemo<{ from: Date | null; to: Date | null }>(() => {
-    const now = new Date();
     if (period === "season") return { from: null, to: null };
-    if (period === "month") return { from: startOfMonth(now), to: endOfMonth(now) };
-    if (period === "year") return { from: startOfYear(now), to: endOfYear(now) };
+
+    // Documentação: Melhoria de Experiência (UX). 
+    // Em vez de usar o calendário físico (new Date()), procuramos a data 
+    // do jogo mais recente. Assim, o filtro "Mês" mostra automaticamente 
+    // o último mês ativo, em vez de mostrar tudo zerado.
+    let refDate = new Date();
+    if (matches.length > 0) {
+      const latestMatchTime = Math.max(...matches.map(m => new Date(m.date).getTime()).filter(t => !isNaN(t)));
+      if (latestMatchTime > 0) {
+        refDate = new Date(latestMatchTime);
+      }
+    }
+
+    // Aplica o filtro de mês/ano usando a data do último jogo como referência
+    if (period === "month") return { from: startOfMonth(refDate), to: endOfMonth(refDate) };
+    if (period === "year") return { from: startOfYear(refDate), to: endOfYear(refDate) };
+
     const [fy, fm, fd] = customFrom.split("-").map(Number);
     const [ty, tm, td] = customTo.split("-").map(Number);
     return {
       from: new Date(fy, (fm || 1) - 1, fd || 1, 0, 0, 0, 0),
       to: new Date(ty, (tm || 1) - 1, td || 1, 23, 59, 59, 999),
     };
-  }, [period, customFrom, customTo]);
+  }, [period, customFrom, customTo, matches]);
 
   const merged = useMemo<(Player & AggStats)[]>(() => {
     if (period === "season") {
