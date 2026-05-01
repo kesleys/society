@@ -1,7 +1,9 @@
-import { LayoutDashboard, BarChart3, History, Users, Trophy, Calendar, Zap, Handshake, Newspaper, BookOpen } from "lucide-react";
+// Documentação: Importações do lucide-react. O 'Zap' foi removido desta lista.
+import { LayoutDashboard, BarChart3, History, Users, Trophy, Calendar, Handshake, Newspaper, BookOpen } from "lucide-react";
 
 export type Section = "dashboard" | "stats" | "history" | "members" | "hall" | "calendar" | "sponsors" | "press" | "wiki";
 
+// Documentação: Lista de itens do menu lateral
 const items: { id: Section; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "stats", label: "Estatísticas", icon: BarChart3 },
@@ -17,15 +19,29 @@ const items: { id: Section; label: string; icon: any }[] = [
 export function Sidebar({ active, onChange }: { active: Section; onChange: (s: Section) => void }) {
   return (
     <aside className="w-64 shrink-0 bg-[#252526] border-r border-[#3E3E42] h-screen sticky top-0 flex flex-col">
+      
+      {/* Documentação: Cabeçalho da Sidebar (Logo e Título) */}
       <div className="px-6 py-5 flex items-center gap-2.5 border-b border-[#3E3E42]">
-        <div className="w-9 h-9 rounded-md bg-[#007ACC] flex items-center justify-center">
-          <Zap className="w-5 h-5 text-white" strokeWidth={2.5} />
+        
+        {/* Documentação: Container da imagem. Usamos overflow-hidden para garantir que as bordas fiquem arredondadas. */}
+        <div className="w-9 h-9 rounded-md flex items-center justify-center overflow-hidden border border-[#3E3E42]">
+          
+          {/* Documentação: A tag img usa o BASE_URL para não quebrar no GitHub Pages. 
+              O object-cover garante que a imagem preenche o espaço sem ficar esticada. */}
+          <img 
+            src={`${import.meta.env.BASE_URL}society_favicon.jpeg`} 
+            alt="Logo Society Futsal Club" 
+            className="w-full h-full object-cover"
+          />
         </div>
+
         <div>
-          <div className="text-white tracking-tight">LIGA AMADORA</div>
-          <div className="text-[11px] text-[#858585] uppercase tracking-widest">Sábados FC</div>
+          <div className="text-white tracking-tight">Society</div>
+          <div className="text-[11px] text-[#858585] uppercase tracking-widest">Futsal Club</div>
         </div>
       </div>
+
+      {/* Documentação: Menu de navegação principal */}
       <nav className="flex-1 p-3 space-y-1">
         {items.map((it) => {
           const Icon = it.icon;
@@ -46,6 +62,8 @@ export function Sidebar({ active, onChange }: { active: Section; onChange: (s: S
           );
         })}
       </nav>
+
+      {/* Documentação: Rodapé da Sidebar indicando a temporada atual */}
       <div className="p-4 m-3 rounded-md bg-[#2D2D30] border border-[#3E3E42]">
         <div className="text-xs text-[#858585] mb-1">Temporada</div>
         <div className="text-white">2026 / Q2</div>
@@ -53,6 +71,7 @@ export function Sidebar({ active, onChange }: { active: Section; onChange: (s: S
           <div className="h-full w-2/3 bg-[#89D185]" />
         </div>
       </div>
+
     </aside>
   );
 }

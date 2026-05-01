@@ -969,7 +969,7 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
     }
   }
 
-  // ---- 8. Next match (next Saturday at 16h, or live in-progress session) -
+  // ---- 8. Next match -
   let nextMatch: NextMatch | null = null;
   const upcomingSession = sessions.find((s) => {
     if (s.status !== "Em Andamento") return false;
@@ -981,11 +981,11 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
   } else {
     const now = new Date();
     const sat = new Date(now);
-    sat.setHours(16, 0, 0, 0);
+    sat.setHours(9, 0, 0, 0);
     const dow = sat.getDay();
     const delta = dow === 6 ? (sat.getTime() <= now.getTime() ? 7 : 0) : (6 - dow + 7) % 7 || 7;
     sat.setDate(sat.getDate() + delta);
-    nextMatch = { date: formatLocalIso(sat), location: "Próximo sábado", address: "A definir" };
+    nextMatch = { date: formatLocalIso(sat), location: "Ginásio da FEFD", address: "Avenida Esperança, s/n, Câmpus Samambaia, Goiânia - GO, CEP 74690-900" };
   }
 
   console.log(
