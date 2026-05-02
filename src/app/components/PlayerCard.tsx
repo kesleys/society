@@ -1,14 +1,16 @@
+import React, { useState, useMemo } from "react";
 import {
   X, Flame, Handshake, Dribbble, Users, ThumbsUp, ThumbsDown,
   Smile, Frown, Scale, Shield, Trophy, TrendingDown, Activity,
-  AlertTriangle, AlertOctagon, Goal,
+  AlertTriangle, AlertOctagon, Goal, Info
 } from "lucide-react";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Player, PlayerAdvanced } from "./data";
 
 function MainStat({ label, value, color }: { label: string; value: number | string; color?: string }) {
   return (
-    <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] p-4">
+    <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] p-4 relative group">
       <div className="text-3xl tabular-nums tracking-tight" style={{ color: color || "#FFFFFF" }}>{value}</div>
       <div className="text-[10px] uppercase tracking-widest text-[#858585] mt-1">{label}</div>
     </div>
@@ -53,9 +55,59 @@ const EMPTY_ADV: PlayerAdvanced = {
 };
 
 export function PlayerCard({ player, onClose }: { player: Player; onClose: () => void }) {
+  const [showRatingBreakdown, setShowRatingBreakdown] = useState(false);
+  const [showRadarInfo, setShowRadarInfo] = useState(false);
+  const [evolutionFilter, setEvolutionFilter] = useState<'all' | 'last10' | 'months'>('last10');
+
   const a = player.advanced ?? EMPTY_ADV;
   const ga = player.goals + player.assists;
 
+  // Radar Chart calculations matching Flutter's player_detail.dart
+  const games = player.matches || 1;
+  const attackScore = Math.min(100, (player.goals / games) * 100);
+  const visionScore = Math.min(100, (player.assists / games) * 100);
+  const defenseScore = Math.min(100, ((a.cleanSheets || 0) / games) * 200);
+  const teamGoals = a.totalTeamGoals || 0;
+  const indirectGoals = Math.max(0, teamGoals - player.goals - player.assists);
+  const tacticScore = teamGoals > 0 ? (indirectGoals / teamGoals) * 100 : 0;
+  const ganaScore = Math.min(100, ((player.wins * 3 + player.draws * 1) / (games * 3)) * 100);
+
+  const radarData = [
+    { subject: 'Ataque', A: attackScore, fullMark: 100 },
+    { subject: 'Visão', A: visionScore, fullMark: 100 },
+    { subject: 'Defesa', A: defenseScore, fullMark: 100 },
+    { subject: 'Tática', A: tacticScore, fullMark: 100 },
+    { subject: 'Gana', A: ganaScore, fullMark: 100 },
+  ];
+
+  // Evolution Chart Logic
+  const evolutionChartData = useMemo(() => {
+    const rawChart: {date: string, nota: number}[] = (player as any).evolution_chart || [];
+    if (!rawChart || rawChart.length === 0) return [];
+    
+    if (evolutionFilter === 'all') {
+      return rawChart;
+    } else if (evolutionFilter === 'last10') {
+      return rawChart.slice(-10);
+    } else if (evolutionFilter === 'months') {
+      const monthly: Record<string, { sum: number, count: number }> = {};
+      rawChart.forEach(item => {
+        const month = item.date.substring(0, 7); // YYYY-MM
+        if (!monthly[month]) monthly[month] = { sum: 0, count: 0 };
+        monthly[month].sum += item.nota;
+        monthly[month].count += 1;
+      });
+      const sortedMonths = Object.keys(monthly).sort();
+      const last12 = sortedMonths.slice(-12);
+      return last12.map(m => ({
+        date: m,
+        nota: monthly[m].sum / monthly[m].count
+      }));
+    }
+    return rawChart;
+  }, [player, evolutionFilter]);
+
+  // Breakdown Rating Math: replaced by static legend matching the app
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div
@@ -66,9 +118,43 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
           <ImageWithFallback src={player.avatar} alt={player.name} className="w-14 h-14 rounded-md object-cover border border-[#3E3E42]" />
           <div className="flex-1 min-w-0">
             <div className="text-white text-xl tracking-tight">{player.name}</div>
-            <div className="text-xs text-[#858585]">
-              #{player.id.slice(0, 8)} · Rating <span className="text-[#89D185] tabular-nums">{player.rating.toFixed(1)}</span>
-              {" · "}Jogos <span className="text-[#D4D4D4] tabular-nums">{player.matches}</span>
+            <div className="flex items-center gap-2 text-xs text-[#858585] mt-1 relative">
+              <span>#{player.id.slice(0, 8)}</span>
+              <span>·</span>
+              <span className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors"
+                    onMouseEnter={() => setShowRatingBreakdown(true)}
+                    onMouseLeave={() => setShowRatingBreakdown(false)}>
+                <span>Rating <strong className="text-[#89D185] tabular-nums">{player.rating.toFixed(1)}</strong></span>
+                <Info className="w-3 h-3 text-[#4FC3F7]" />
+              </span>
+              <span>·</span>
+              <span>Jogos <strong className="text-[#D4D4D4] tabular-nums">{player.matches}</strong></span>
+              
+              {/* RATING BREAKDOWN POPUP */}
+              {showRatingBreakdown && (
+                <div className="absolute top-full left-10 mt-2 w-72 bg-[#252526] border border-[#3E3E42] p-4 rounded-md shadow-2xl z-50 text-xs text-[#D4D4D4]">
+                  <div className="font-bold text-white mb-2 pb-1 border-b border-[#3E3E42]">Composição da Nota</div>
+                  <div className="mb-3 text-[#858585] text-[10px] leading-relaxed">
+                    A sua nota é a média do seu desempenho em todas as partidas jogadas. Cada partida começa com uma Nota Base e sofre ajustes com base nos seus eventos em campo:
+                  </div>
+                  <div className="flex justify-between py-1"><span>Nota Base</span><span className="text-white">6.5</span></div>
+                  <div className="flex justify-between py-1"><span>Gol Feito</span><span className="text-[#89D185]">+0.9</span></div>
+                  <div className="flex justify-between py-1"><span>Assistência</span><span className="text-[#89D185]">+0.8</span></div>
+                  <div className="flex justify-between py-1"><span>Vitória</span><span className="text-[#89D185]">+1.5</span></div>
+                  <div className="flex justify-between py-1"><span>Derrota</span><span className="text-[#F48771]">-1.5</span></div>
+                  <div className="flex justify-between py-1"><span>Cartão Amarelo</span><span className="text-[#DCDCAA]">-1.0</span></div>
+                  <div className="flex justify-between py-1"><span>Cartão Vermelho</span><span className="text-[#F48771]">-2.0</span></div>
+                  <div className="flex justify-between py-1"><span>Gol Contra</span><span className="text-[#F48771]">-1.0</span></div>
+                  
+                  <div className="mt-3 text-[10px] text-[#858585] italic leading-tight border-t border-[#3E3E42] pt-2">
+                    * Nota Bayesiana: Penaliza ou bonifica levemente jogadores baseando-se no histórico.
+                  </div>
+                  <div className="flex justify-between py-1 mt-2 font-bold text-white text-sm">
+                    <span className="text-[#4FC3F7]">Sua Média Atual:</span>
+                    <span className="text-[#4FC3F7]">{player.rating.toFixed(1)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-md bg-[#2D2D30] border border-[#3E3E42] hover:bg-[#3E3E42] flex items-center justify-center">
@@ -86,6 +172,73 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
               <MainStat label="Vitórias" value={player.wins} color="#89D185" />
               <MainStat label="Empates" value={player.draws} />
               <MainStat label="Derrotas" value={player.losses} color="#F48771" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="flex items-center justify-between mb-2 relative">
+                <div className="text-[11px] uppercase tracking-widest text-[#858585]">Desempenho (Radar)</div>
+                <Info 
+                  className="w-3.5 h-3.5 text-[#858585] cursor-pointer hover:text-white transition-colors" 
+                  onMouseEnter={() => setShowRadarInfo(true)}
+                  onMouseLeave={() => setShowRadarInfo(false)}
+                />
+                {showRadarInfo && (
+                  <div className="absolute top-full right-0 mt-1 w-64 bg-[#252526] border border-[#3E3E42] p-3 rounded-md shadow-2xl z-50 text-xs">
+                    <div className="font-bold text-white mb-2 pb-1 border-b border-[#3E3E42]">Entenda o Gráfico</div>
+                    <div className="mb-1"><strong className="text-[#4FC3F7]">Ataque:</strong> Média de gols por jogo.</div>
+                    <div className="mb-1"><strong className="text-[#4FC3F7]">Visão:</strong> Média de assistências por jogo.</div>
+                    <div className="mb-1"><strong className="text-[#4FC3F7]">Defesa:</strong> Frequência de clean sheets.</div>
+                    <div className="mb-1"><strong className="text-[#4FC3F7]">Tática:</strong> Participação em gols indiretos do time.</div>
+                    <div><strong className="text-[#4FC3F7]">Gana:</strong> Aproveitamento de vitórias.</div>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] h-64 flex items-center justify-center p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="#3E3E42" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#858585', fontSize: 10 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar name="Stats" dataKey="A" stroke="#007ACC" fill="#007ACC" fillOpacity={0.4} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] uppercase tracking-widest text-[#858585]">Evolução (Nota Média)</div>
+                <select 
+                  className="bg-transparent border border-[#3E3E42] rounded px-1 text-[10px] uppercase tracking-widest text-[#4FC3F7] cursor-pointer focus:outline-none"
+                  value={evolutionFilter}
+                  onChange={(e) => setEvolutionFilter(e.target.value as any)}
+                >
+                  <option value="last10" className="bg-[#252526]">Últimas 10</option>
+                  <option value="months" className="bg-[#252526]">Por Mês (12m)</option>
+                  <option value="all" className="bg-[#252526]">Todo Histórico</option>
+                </select>
+              </div>
+              <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] h-64 p-4">
+                {evolutionChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={evolutionChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#3E3E42" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: '#858585', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis domain={['auto', 'auto']} tick={{ fill: '#858585', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#252526', borderColor: '#3E3E42', color: '#D4D4D4' }}
+                        itemStyle={{ color: '#007ACC' }}
+                        formatter={(value: number) => [value.toFixed(1), 'Nota']}
+                      />
+                      <Line type="monotone" dataKey="nota" stroke="#007ACC" strokeWidth={3} dot={{ fill: '#007ACC', r: 4 }} activeDot={{ r: 6, fill: '#4FC3F7' }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm text-[#858585]">Gráfico indisponível</div>
+                )}
+              </div>
             </div>
           </div>
 

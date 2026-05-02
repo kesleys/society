@@ -24,11 +24,10 @@ function useCountdown(target: string | null) {
 function ScoreDigit({ n, win }: { n: number; win: boolean }) {
   return (
     <div
-      className={`w-10 h-12 rounded flex items-center justify-center tabular-nums text-2xl border ${
-        win
+      className={`w-10 h-12 rounded flex items-center justify-center tabular-nums text-2xl border ${win
           ? "bg-[#007ACC] border-[#1F8AD2] text-white"
           : "bg-[#1E1E1E] border-[#3E3E42] text-[#CCCCCC]"
-      }`}
+        }`}
     >
       {n}
     </div>
@@ -39,11 +38,13 @@ export function Dashboard() {
   const { data } = useData();
   const players = data?.players ?? [];
   const matches = data?.matches ?? [];
+  const sessions = data?.sessions ?? [];
   const nextMatch = data?.nextMatch ?? null;
-  
+
   // 1. Lemos diretamente o MVP do mês anterior que o nosso tradutor calculou
   const currentMonthMVP = data?.lastMonthMVP ?? null;
-  
+  const latestSession = sessions[0] as any; // Usar a última sessão (já ordenada DESC) para o resumo do dia
+
   // 2. Encontramos o jogador para poder abrir o modal. 
   // Removi o "players[0]" para que, se não houver MVP, o site mostre 
   // corretamente "Sem dados" em vez de puxar um jogador aleatório.
@@ -118,11 +119,10 @@ export function Dashboard() {
             <div className="flex gap-3 flex-wrap">
               <button
                 onClick={() => confirmPresence("in")}
-                className={`px-5 py-2 rounded-md text-sm transition inline-flex items-center gap-2 ${
-                  myStatus === "in"
+                className={`px-5 py-2 rounded-md text-sm transition inline-flex items-center gap-2 ${myStatus === "in"
                     ? "bg-[#89D185]/20 border border-[#89D185]/50 text-[#89D185]"
                     : "bg-[#007ACC] text-white hover:bg-[#1F8AD2]"
-                }`}
+                  }`}
               >
                 <Check className="w-4 h-4" />
                 {myStatus === "in" ? "Presença confirmada" : "Confirmar Convocação"}
@@ -185,6 +185,34 @@ export function Dashboard() {
           <KPI icon={Trophy} label="Partidas jogadas" value={String(totalMatches)} />
         </div>
       </div>
+
+      {latestSession && latestSession.mvpName && (
+        <div className="rounded-md border border-[#3E3E42] bg-[#252526] p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-white tracking-tight flex items-center gap-2">
+              <CalIcon className="w-5 h-5 text-[#89D185]" /> Resumo da Última Pelada
+            </h2>
+            <span className="text-xs text-[#858585]">{latestSession.date}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] p-4 col-span-1 md:col-span-2 flex items-center gap-4">
+              <ImageWithFallback src={latestSession.mvpIcon || ""} alt={latestSession.mvpName} className="w-16 h-16 rounded-full border-2 border-[#FFD700] object-cover" />
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-[#FFD700] mb-1 font-bold">MVP do Dia</div>
+                <div className="text-white text-xl tracking-tight">{latestSession.mvpName}</div>
+              </div>
+            </div>
+            <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] p-4 flex flex-col justify-center">
+              <div className="text-[10px] uppercase tracking-widest text-[#858585] mb-1">Média de Gols da Pelada</div>
+              <div className="text-white text-2xl tracking-tight">{latestSession.avgGoals || "-"}</div>
+            </div>
+            <div className="rounded-md bg-[#1E1E1E] border border-[#3E3E42] p-4 flex flex-col justify-center">
+              <div className="text-[10px] uppercase tracking-widest text-[#858585] mb-1">Maior Goleada</div>
+              <div className="text-white text-2xl tracking-tight">{latestSession.biggestWin || "-"}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-md border border-[#3E3E42] bg-[#252526] p-6">
         <div className="flex items-center justify-between mb-5">
