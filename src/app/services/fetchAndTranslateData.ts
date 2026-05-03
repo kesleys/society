@@ -122,6 +122,17 @@ export interface NextMatch {
   address: string;
 }
 
+export interface RatingRules {
+  base: number;
+  goal: number;
+  assist: number;
+  win: number;
+  loss: number;
+  yellow: number;
+  red: number;
+  own_goal: number;
+}
+
 export interface TranslatedData {
   groupName: string;
   groupId: string;
@@ -132,6 +143,7 @@ export interface TranslatedData {
   lastMonthMVP: MonthlyMVP | null;
   yearChampion: YearChampion | null;
   nextMatch: NextMatch | null;
+  ratingRules?: RatingRules;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,6 +459,7 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
     groupName: "", groupId: "",
     players: [], matches: [], sessions: [],
     monthlyMVPs: [], lastMonthMVP: null, yearChampion: null, nextMatch: null,
+    ratingRules: undefined,
   };
 
   console.log(`${TAG} iniciando fetch para syncCode="${syncCode}"`);
@@ -1064,8 +1077,9 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
     matches,
     sessions,
     monthlyMVPs,
-    lastMonthMVP,    // <-- Linha adicionada aqui!
+    lastMonthMVP,
     yearChampion,
     nextMatch,
+    ratingRules: siteData?.rating_rules,
   };
 }

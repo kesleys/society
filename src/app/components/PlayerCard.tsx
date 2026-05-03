@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useData } from "../DataContext";
 import type { Player, PlayerAdvanced } from "./data";
 
 function MainStat({ label, value, color }: { label: string; value: number | string; color?: string }) {
@@ -55,6 +56,8 @@ const EMPTY_ADV: PlayerAdvanced = {
 };
 
 export function PlayerCard({ player, onClose }: { player: Player; onClose: () => void }) {
+  const { data } = useData();
+  const rules = data?.ratingRules;
   const [showRatingBreakdown, setShowRatingBreakdown] = useState(false);
   const [showRadarInfo, setShowRadarInfo] = useState(false);
   const [evolutionFilter, setEvolutionFilter] = useState<'all' | 'last10' | 'months'>('last10');
@@ -79,6 +82,19 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
     { subject: 'Tática', A: tacticScore, fullMark: 100 },
     { subject: 'Gana', A: ganaScore, fullMark: 100 },
   ];
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    if (dateStr.length === 7) {
+      const [year, month] = dateStr.split('-');
+      return `${month}/${year.slice(2)}`;
+    }
+    if (dateStr.length === 10) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}`;
+    }
+    return dateStr;
+  };
 
   // Evolution Chart Logic
   const evolutionChartData = useMemo(() => {
@@ -137,14 +153,14 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
                   <div className="mb-3 text-[#858585] text-[10px] leading-relaxed">
                     A sua nota é a média do seu desempenho em todas as partidas jogadas. Cada partida começa com uma Nota Base e sofre ajustes com base nos seus eventos em campo:
                   </div>
-                  <div className="flex justify-between py-1"><span>Nota Base</span><span className="text-white">6.5</span></div>
-                  <div className="flex justify-between py-1"><span>Gol Feito</span><span className="text-[#89D185]">+0.9</span></div>
-                  <div className="flex justify-between py-1"><span>Assistência</span><span className="text-[#89D185]">+0.8</span></div>
-                  <div className="flex justify-between py-1"><span>Vitória</span><span className="text-[#89D185]">+1.5</span></div>
-                  <div className="flex justify-between py-1"><span>Derrota</span><span className="text-[#F48771]">-1.5</span></div>
-                  <div className="flex justify-between py-1"><span>Cartão Amarelo</span><span className="text-[#DCDCAA]">-1.0</span></div>
-                  <div className="flex justify-between py-1"><span>Cartão Vermelho</span><span className="text-[#F48771]">-2.0</span></div>
-                  <div className="flex justify-between py-1"><span>Gol Contra</span><span className="text-[#F48771]">-1.0</span></div>
+                  <div className="flex justify-between py-1"><span>Nota Base</span><span className="text-white">{rules?.base ?? "6.5"}</span></div>
+                  <div className="flex justify-between py-1"><span>Gol Feito</span><span className="text-[#89D185]">+{rules?.goal ?? "0.9"}</span></div>
+                  <div className="flex justify-between py-1"><span>Assistência</span><span className="text-[#89D185]">+{rules?.assist ?? "0.8"}</span></div>
+                  <div className="flex justify-between py-1"><span>Vitória</span><span className="text-[#89D185]">+{rules?.win ?? "1.5"}</span></div>
+                  <div className="flex justify-between py-1"><span>Derrota</span><span className="text-[#F48771]">{rules?.loss ?? "-1.5"}</span></div>
+                  <div className="flex justify-between py-1"><span>Cartão Amarelo</span><span className="text-[#DCDCAA]">{rules?.yellow ?? "-1.0"}</span></div>
+                  <div className="flex justify-between py-1"><span>Cartão Vermelho</span><span className="text-[#F48771]">{rules?.red ?? "-2.0"}</span></div>
+                  <div className="flex justify-between py-1"><span>Gol Contra</span><span className="text-[#F48771]">{rules?.own_goal ?? "-1.0"}</span></div>
                   
                   <div className="mt-3 text-[10px] text-[#858585] italic leading-tight border-t border-[#3E3E42] pt-2">
                     * Nota Bayesiana: Penaliza ou bonifica levemente jogadores baseando-se no histórico.
@@ -225,11 +241,12 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={evolutionChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#3E3E42" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: '#858585', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fill: '#858585', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis domain={['auto', 'auto']} tick={{ fill: '#858585', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <RechartsTooltip 
                         contentStyle={{ backgroundColor: '#252526', borderColor: '#3E3E42', color: '#D4D4D4' }}
                         itemStyle={{ color: '#007ACC' }}
+                        labelFormatter={formatDate}
                         formatter={(value: number) => [value.toFixed(1), 'Nota']}
                       />
                       <Line type="monotone" dataKey="nota" stroke="#007ACC" strokeWidth={3} dot={{ fill: '#007ACC', r: 4 }} activeDot={{ r: 6, fill: '#4FC3F7' }} />
