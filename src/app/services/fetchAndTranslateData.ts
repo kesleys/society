@@ -122,6 +122,17 @@ export interface NextMatch {
   address: string;
 }
 
+export interface RatingRules {
+  base: number;
+  goal: number;
+  assist: number;
+  win: number;
+  loss: number;
+  yellow: number;
+  red: number;
+  own_goal: number;
+}
+
 export interface TranslatedData {
   groupName: string;
   groupId: string;
@@ -132,6 +143,7 @@ export interface TranslatedData {
   lastMonthMVP: MonthlyMVP | null;
   yearChampion: YearChampion | null;
   nextMatch: NextMatch | null;
+  ratingRules?: RatingRules;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,6 +459,7 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
     groupName: "", groupId: "",
     players: [], matches: [], sessions: [],
     monthlyMVPs: [], lastMonthMVP: null, yearChampion: null, nextMatch: null,
+    ratingRules: undefined,
   };
 
   console.log(`${TAG} iniciando fetch para syncCode="${syncCode}"`);
@@ -866,6 +879,67 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
     });
   }
 
+  // --- MERGE SITE_DATA FROM APP-FUT ---
+  let siteData = rawData["site_data"] as any;
+  // Fallback to top-level docData if it came from Firebase
+  if (!siteData && (docData as any)?.site_data) {
+    siteData = (docData as any).site_data;
+  }
+  
+  if (siteData && Array.isArray(siteData.players)) {
+    console.log(`${TAG} Encontrado site_data do App-Fut, sobrescrevendo stats dos jogadores...`);
+    for (const sitePlayer of siteData.players) {
+      const existing = playersAll.find(p => p.id === sitePlayer.id);
+      if (existing) {
+        existing.rating = round1(sitePlayer.nota ?? existing.rating);
+        existing.ga = sitePlayer.ga ?? existing.ga;
+        existing.goals = sitePlayer.goals ?? existing.goals;
+        existing.assists = sitePlayer.assists ?? existing.assists;
+        existing.matches = sitePlayer.games ?? existing.matches;
+        existing.wins = sitePlayer.wins ?? existing.wins;
+        existing.draws = sitePlayer.draws ?? existing.draws;
+        existing.losses = sitePlayer.losses ?? existing.losses;
+        
+        // Merge advanced stats se vieram do flutter
+        if (sitePlayer.advanced) {
+          existing.advanced = {
+            ...existing.advanced,
+            ...sitePlayer.advanced,
+            yellowCards: sitePlayer.yellow ?? existing.advanced?.yellowCards ?? 0,
+            redCards: sitePlayer.red ?? existing.advanced?.redCards ?? 0,
+            cleanSheets: sitePlayer.clean_sheets ?? existing.advanced?.cleanSheets ?? 0,
+            hatTricks: sitePlayer.hat_tricks ?? existing.advanced?.hatTricks ?? 0,
+            ownGoals: sitePlayer.own_goals ?? existing.advanced?.ownGoals ?? 0,
+            biggestWinScore: sitePlayer.biggest_win_score ?? existing.advanced?.biggestWinScore ?? "-",
+            biggestLossScore: sitePlayer.biggest_loss_score ?? existing.advanced?.biggestLossScore ?? "-",
+            maxUnbeatenStreak: sitePlayer.max_unbeaten ?? existing.advanced?.maxUnbeatenStreak ?? 0,
+            totalTeamGoals: sitePlayer.total_team_goals ?? existing.advanced?.totalTeamGoals ?? 0,
+          };
+          // Also pass evolution chart if it exists
+          if (sitePlayer.evolution_chart) {
+            (existing as any).evolution_chart = sitePlayer.evolution_chart;
+          }
+        }
+      }
+    }
+  }
+
+  if (siteData && Array.isArray(siteData.sessions)) {
+    console.log(`${TAG} Atualizando sessions com site_data...`);
+    for (const siteSession of siteData.sessions) {
+      const existing = sessions.find(s => s.id === siteSession.id);
+      if (existing) {
+        (existing as any).avgGoals = siteSession.avgGoals;
+        (existing as any).biggestWin = siteSession.biggestWin;
+        (existing as any).avgRating = siteSession.avgRating;
+        (existing as any).mvpId = siteSession.mvpId;
+        (existing as any).mvpName = siteSession.mvpName;
+        (existing as any).mvpIcon = siteSession.mvpIcon;
+      }
+    }
+  }
+  // ------------------------------------
+
   // Ranking visibility: prefer players that meet min-games threshold; otherwise still
   // include them but they sort to the bottom. Pages can filter by `matches >= K_MIN_GAMES_FOR_GLOBAL_RANKING`.
   playersAll.sort((a, b) => {
@@ -1003,8 +1077,9 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
     matches,
     sessions,
     monthlyMVPs,
-    lastMonthMVP,    // <-- Linha adicionada aqui!
+    lastMonthMVP,
     yearChampion,
     nextMatch,
+    ratingRules: siteData?.rating_rules,
   };
 }

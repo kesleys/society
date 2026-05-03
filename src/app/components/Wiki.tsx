@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Search, BookOpen, ChevronRight, Hash, FileText, Shield, Coins, Users, Trophy } from "lucide-react";
 import { Modal } from "./Modal";
 
+import { useData } from "../DataContext";
+import type { RatingRules } from "../services/fetchAndTranslateData";
+
 type Article = { title: string; preview: string; body: string };
 type Section = { id: string; title: string; icon: any; articles: Article[] };
 
-const sections: Section[] = [
+const getSections = (rules: RatingRules | undefined): Section[] => [
   {
     id: "regras",
     title: "Regras Oficiais",
@@ -21,7 +24,19 @@ const sections: Section[] = [
     title: "Sistema de Rating",
     icon: Hash,
     articles: [
-      { title: "Como o Rating é calculado", preview: "G+A 60%, vitórias 25%, presença 15%.", body: "A nota do jogador é calculada com a fórmula:\n\nRating = (G+A normalizado * 0.6) + (Win% * 0.25) + (Presença% * 0.15)\n\nA normalização é feita pela mediana da turma. Atualizado após cada partida." },
+      { title: "Como o Rating é calculado", preview: "Base Bayesiana com pesos de eventos por partida.", body: `A nota do jogador é calculada utilizando a Média Ponderada das partidas (com mais peso para jogos recentes) e um limitador Bayesiano para penalizar/bonificar volume de jogo.
+
+Cada partida jogada inicia com uma Nota Base de ${rules?.base ?? 6.5} e sofre os seguintes ajustes com base no desempenho:
+
+- Gols: +${rules?.goal ?? 0.9} por gol
+- Assistências: +${rules?.assist ?? 0.8} por assistência
+- Vitória do time: +${rules?.win ?? 1.5}
+- Derrota do time: ${rules?.loss ?? -1.5}
+- Cartão Amarelo: ${rules?.yellow ?? -1.0}
+- Cartão Vermelho: ${rules?.red ?? -2.0}
+- Gol Contra: ${rules?.own_goal ?? -1.0}
+
+A média final resultante consolida o ranking da turma.` },
       { title: "Rebalanceamento mensal", preview: "Critério para evitar que um craque jogue sempre no mesmo time.", body: "No início de cada mês os times são redistribuídos com base no rating atual. O algoritmo busca diferença máxima de 5 pontos entre as somas dos times." },
     ],
   },
@@ -64,6 +79,8 @@ const sections: Section[] = [
 ];
 
 export function Wiki() {
+  const { data } = useData();
+  const sections = getSections(data?.ratingRules);
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState(sections[0].id);
   const [reading, setReading] = useState<{ section: string; article: Article } | null>(null);

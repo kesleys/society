@@ -32,6 +32,36 @@ function RosterList({ title, players, highlight }: { title: string; players: str
   );
 }
 
+function MatchEventsList({ events, team }: { events: any[]; team: "Vermelho" | "Branco" }) {
+  const teamEvents = events.filter((e) => e.team === team);
+  if (teamEvents.length === 0) return null;
+
+  return (
+    <div className="mt-4 border-t border-[#3E3E42]/50 pt-3">
+      <div className="text-xs uppercase tracking-widest text-[#858585] mb-2">Eventos da Partida</div>
+      <ul className="space-y-2">
+        {teamEvents.map((e, idx) => (
+          <li key={idx} className="flex items-start gap-2 text-sm text-[#D4D4D4]">
+            <span className="text-[#858585] w-10 shrink-0 tabular-nums">{e.time || ""}</span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                {e.type === "goal" && <span className="text-[#DCDCAA]">⚽</span>}
+                {e.type === "own_goal" && <span className="text-red-400">⚽ (Contra)</span>}
+                {e.type === "yellow_card" && <span className="text-yellow-400">🟨</span>}
+                {e.type === "red_card" && <span className="text-red-500">🟥</span>}
+                <span className="font-medium text-white">{e.player}</span>
+              </div>
+              {e.type === "goal" && e.assist && (
+                <div className="text-xs text-[#858585] ml-5">Assistência: {e.assist}</div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 export function History() {
@@ -167,8 +197,14 @@ export function History() {
                               </button>
                               {isOpen && (
                                 <div className="border-t border-[#3E3E42] p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <RosterList title={mt.teamA} highlight={winA} players={mt.redRoster.map((r) => r.name)} />
-                                  <RosterList title={mt.teamB} highlight={winB} players={mt.whiteRoster.map((r) => r.name)} />
+                                  <div>
+                                    <RosterList title={mt.teamA} highlight={winA} players={mt.redRoster.map((r) => r.name)} />
+                                    <MatchEventsList events={mt.events} team="Vermelho" />
+                                  </div>
+                                  <div>
+                                    <RosterList title={mt.teamB} highlight={winB} players={mt.whiteRoster.map((r) => r.name)} />
+                                    <MatchEventsList events={mt.events} team="Branco" />
+                                  </div>
                                 </div>
                               )}
                             </div>

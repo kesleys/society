@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from "react";
-import { Search, Bell, Loader2, AlertTriangle } from "lucide-react";
+import { Search, Bell, Loader2, AlertTriangle, Download } from "lucide-react";
 import { Toaster } from "sonner";
 import { Sidebar, type Section } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
@@ -56,6 +56,18 @@ function Header({ onNavigate }: { onNavigate: (s: Section) => void }) {
   }, [q, players]);
 
   const unread = notifications.filter((n) => !n.read).length;
+
+  const handleExportJSON = () => {
+    if (!data) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `site_data_export_${new Date().getTime()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <header className="sticky top-0 z-20 backdrop-blur bg-[#1E1E1E]/90 border-b border-[#3E3E42] px-8 py-4 flex items-center gap-4">
@@ -142,6 +154,11 @@ function Header({ onNavigate }: { onNavigate: (s: Section) => void }) {
           </div>
         )}
       </div>
+
+      <button onClick={handleExportJSON} title="Baixar dados brutos do site" className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#2D2D30] hover:bg-[#3E3E42] border border-[#3E3E42] text-sm text-[#CCCCCC] ml-2">
+        <Download className="w-4 h-4" />
+        <span className="hidden md:inline">Baixar Dados</span>
+      </button>
 
       <div className="flex items-center gap-3 pl-4 border-l border-[#3E3E42]">
         <div className="text-right">
