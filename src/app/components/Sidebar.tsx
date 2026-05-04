@@ -9,11 +9,11 @@ const items: { id: Section; label: string; icon: any }[] = [
   { id: "stats", label: "Estatísticas", icon: BarChart3 },
   { id: "history", label: "Histórico", icon: History },
   { id: "members", label: "Plantel", icon: Users },
-  { id: "hall", label: "Hall of Fame", icon: Trophy },
-  { id: "calendar", label: "Calendário", icon: Calendar },
-  { id: "sponsors", label: "Patrocinadores", icon: Handshake },
-  { id: "press", label: "Redação", icon: Newspaper },
-  { id: "wiki", label: "Wiki", icon: BookOpen },
+  //{ id: "hall", label: "Hall of Fame", icon: Trophy },
+  //{ id: "calendar", label: "Calendário", icon: Calendar },
+  //{ id: "sponsors", label: "Patrocinadores", icon: Handshake },
+  //{ id: "press", label: "Redação", icon: Newspaper },
+  //{ id: "wiki", label: "Wiki", icon: BookOpen },
 ];
 
 export function Sidebar({ active, onChange }: { active: Section; onChange: (s: Section) => void }) {
