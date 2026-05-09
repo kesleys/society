@@ -6,8 +6,8 @@ export type Section = "dashboard" | "stats" | "history" | "members" | "hall" | "
 
 const items: { id: Section; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "stats", label: "Estatísticas", icon: BarChart3 },
-  { id: "history", label: "Histórico", icon: History },
+  { id: "stats", label: "Estatísticas dos Jogadores", icon: BarChart3 },
+  { id: "history", label: "Peladas", icon: History },
   { id: "members", label: "Plantel", icon: Users },
   //{ id: "hall", label: "Hall of Fame", icon: Trophy },
   //{ id: "calendar", label: "Calendário", icon: Calendar },
@@ -16,25 +16,27 @@ const items: { id: Section; label: string; icon: any }[] = [
   //{ id: "wiki", label: "Wiki", icon: BookOpen },
 ];
 
-export function Sidebar({ active, onChange }: { active: Section; onChange: (s: Section) => void }) {
+export function Sidebar({ active, onChange, mobileOpen, onCloseMobile }: { active: Section; onChange: (s: Section) => void, mobileOpen?: boolean, onCloseMobile?: () => void }) {
   // Documentação: Criamos o estado. Por padrão, começa como 'false' (aberta).
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <aside 
-      // Documentação: Alteramos 'w-64' para ser dinâmico. Se 'isCollapsed' for true, fica 'w-20', senão 'w-64'.
-      // Adicionamos 'transition-all duration-300' para a animação de encolher ser suave.
-      className={`shrink-0 bg-[#252526] border-r border-[#3E3E42] h-screen sticky top-0 flex flex-col transition-all duration-300 ease-in-out ${
-        isCollapsed ? "w-20" : "w-64"
-      }`}
-    >
+    <>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onCloseMobile} />
+      )}
+      <aside 
+        className={`shrink-0 bg-[#252526] border-r border-[#3E3E42] h-[100dvh] fixed md:sticky top-0 flex flex-col transition-all duration-300 ease-in-out z-50 ${
+          mobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"
+        } ${isCollapsed ? "md:w-20" : "md:w-64"}`}
+      >
       
       {/* Documentação: Transformamos esta div num botão. Ao clicar, inverte o valor de 'isCollapsed' */}
       <button 
         onClick={() => setIsCollapsed(!isCollapsed)}
         title={isCollapsed ? "Expandir menu" : "Recolher menu"}
         className={`px-6 py-5 flex items-center border-b border-[#3E3E42] hover:bg-[#2A2D2E] transition-colors cursor-pointer w-full text-left ${
-          isCollapsed ? "justify-center px-0" : "gap-2.5"
+          isCollapsed ? "justify-center px-0 hidden md:flex" : "gap-2.5"
         }`}
       >
         <div className="w-9 h-9 rounded-md flex items-center justify-center overflow-hidden border border-[#3E3E42] shrink-0">
@@ -94,6 +96,7 @@ export function Sidebar({ active, onChange }: { active: Section; onChange: (s: S
         </div>
       )}
 
-    </aside>
+      </aside>
+    </>
   );
 }

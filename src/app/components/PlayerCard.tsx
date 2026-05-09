@@ -2,12 +2,13 @@ import React, { useState, useMemo } from "react";
 import {
   X, Flame, Handshake, Dribbble, Users, ThumbsUp, ThumbsDown,
   Smile, Frown, Scale, Shield, Trophy, TrendingDown, Activity,
-  AlertTriangle, AlertOctagon, Goal, Info
+  AlertTriangle, AlertOctagon, Goal, Info, Search
 } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useData } from "../DataContext";
 import type { Player, PlayerAdvanced } from "./data";
+import { PlayerComparison } from "./PlayerComparison";
 
 function MainStat({ label, value, color }: { label: string; value: number | string; color?: string }) {
   return (
@@ -61,6 +62,9 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
   const [showRatingBreakdown, setShowRatingBreakdown] = useState(false);
   const [showRadarInfo, setShowRadarInfo] = useState(false);
   const [evolutionFilter, setEvolutionFilter] = useState<'all' | 'last10' | 'months'>('last10');
+  const [showSelector, setShowSelector] = useState(false);
+  const [comparingWith, setComparingWith] = useState<Player | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const a = player.advanced ?? EMPTY_ADV;
   const ga = player.goals + player.assists;
@@ -84,31 +88,54 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
   ];
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return "";
-    if (dateStr.length === 7) {
-      const [year, month] = dateStr.split('-');
-      return `${month}/${year.slice(2)}`;
+    // Remove zero-width spaces before parsing
+    const cleanDateStr = dateStr.replace(/\u200B/g, '');
+    if (cleanDateStr.includes("/")) return cleanDateStr; // Already formatted (e.g. J.1)
+    
+    // For monthly grouping "YYYY-MM"
+    if (cleanDateStr.length === 7 && cleanDateStr.indexOf('-') === 4) {
+      const [y, m] = cleanDateStr.split('-');
+      return `${m}/${y.slice(2)}`;
     }
-    if (dateStr.length === 10) {
-      const [year, month, day] = dateStr.split('-');
-      return `${day}/${month}`;
+    
+    // For full dates
+    const d = new Date(cleanDateStr);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yy = String(d.getFullYear()).slice(2);
+      return `${dd}/${mm}/${yy}`;
     }
-    return dateStr;
+    
+    return cleanDateStr;
   };
 
   // Evolution Chart Logic
   const evolutionChartData = useMemo(() => {
     const rawChart: {date: string, nota: number}[] = (player as any).evolution_chart || [];
     if (!rawChart || rawChart.length === 0) return [];
+
+    const processedChart = rawChart.map((item, idx) => {
+      // Recharts groups identical X-axis names. To prevent grouping matches on the same day,
+      // we append zero-width spaces (\u200B) to the date string so they visually look identical
+      // but are technically unique strings, forcing Recharts to plot them separately on the X axis.
+      const dateStr = item.date || `J.${idx + 1}`;
+      const uniqueDate = `${dateStr}${'\u200B'.repeat(idx + 1)}`;
+      return {
+        date: uniqueDate,
+        rawDate: dateStr, // Keep the original for tooltip formatting if needed
+        nota: Number(item.nota) || 0
+      };
+    });
     
     if (evolutionFilter === 'all') {
-      return rawChart;
+      return processedChart;
     } else if (evolutionFilter === 'last10') {
-      return rawChart.slice(-10);
+      return processedChart.slice(-10);
     } else if (evolutionFilter === 'months') {
       const monthly: Record<string, { sum: number, count: number }> = {};
-      rawChart.forEach(item => {
-        const month = item.date.substring(0, 7); // YYYY-MM
+      processedChart.forEach(item => {
+        const month = item.rawDate.substring(0, 7); // YYYY-MM
         if (!monthly[month]) monthly[month] = { sum: 0, count: 0 };
         monthly[month].sum += item.nota;
         monthly[month].count += 1;
@@ -117,11 +144,11 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
       const last12 = sortedMonths.slice(-12);
       return last12.map(m => ({
         date: m,
-        nota: monthly[m].sum / monthly[m].count
+        nota: Number((monthly[m].sum / monthly[m].count).toFixed(1))
       }));
     }
-    return rawChart;
-  }, [player, evolutionFilter]);
+    return processedChart;
+  }, [player, evolutionFilter, data?.matches]);
 
   // Breakdown Rating Math: replaced by static legend matching the app
   return (
@@ -172,8 +199,16 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
                 </div>
               )}
             </div>
+            <div className="mt-3">
+              <button 
+                onClick={() => setShowSelector(true)} 
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#007ACC] hover:bg-[#005A9E] text-white text-xs font-medium transition"
+              >
+                <Scale className="w-3.5 h-3.5" /> Comparar X1
+              </button>
+            </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-md bg-[#2D2D30] border border-[#3E3E42] hover:bg-[#3E3E42] flex items-center justify-center">
+          <button onClick={onClose} className="w-9 h-9 rounded-md bg-[#2D2D30] border border-[#3E3E42] hover:bg-[#3E3E42] flex items-center justify-center shrink-0 self-start">
             <X className="w-4 h-4 text-[#CCCCCC]" />
           </button>
         </div>
@@ -247,9 +282,9 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
                         contentStyle={{ backgroundColor: '#252526', borderColor: '#3E3E42', color: '#D4D4D4' }}
                         itemStyle={{ color: '#007ACC' }}
                         labelFormatter={formatDate}
-                        formatter={(value: number) => [value.toFixed(1), 'Nota']}
+                        formatter={(value: number | string) => [Number(value).toFixed(1), 'Nota']}
                       />
-                      <Line type="monotone" dataKey="nota" stroke="#007ACC" strokeWidth={3} dot={{ fill: '#007ACC', r: 4 }} activeDot={{ r: 6, fill: '#4FC3F7' }} />
+                      <Line type="monotone" dataKey="nota" stroke="#007ACC" strokeWidth={3} dot={{ fill: '#007ACC', r: 4 }} activeDot={{ r: 6, fill: '#4FC3F7' }} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -284,6 +319,41 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
           </div>
         </div>
       </div>
+      
+      {showSelector && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowSelector(false)}>
+          <div className="bg-[#252526] border border-[#3E3E42] rounded-md max-w-sm w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-[#3E3E42]">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white text-sm font-medium tracking-tight">Escolher Adversário</h3>
+                <button onClick={() => setShowSelector(false)} className="text-[#858585] hover:text-white"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#858585]" />
+                <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar jogador..." className="w-full pl-9 pr-3 py-2 rounded-md bg-[#1E1E1E] border border-[#3E3E42] text-sm text-[#D4D4D4] focus:outline-none focus:border-[#007ACC]" />
+              </div>
+            </div>
+            <div className="p-2 overflow-y-auto flex-1">
+              {data?.players.filter(p => p.id !== player.id && p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
+                <button key={p.id} onClick={() => { setComparingWith(p); setShowSelector(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-[#2A2D2E] rounded-md text-left transition-colors">
+                  <ImageWithFallback src={p.avatar} alt={p.name} className="w-8 h-8 rounded-md object-cover border border-[#3E3E42]" />
+                  <div className="flex-1">
+                    <div className="text-sm text-[#D4D4D4]">{p.name}</div>
+                    <div className="text-[10px] text-[#858585]">Rating: {p.rating.toFixed(1)}</div>
+                  </div>
+                </button>
+              ))}
+              {data?.players.filter(p => p.id !== player.id && p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                <div className="p-4 text-center text-sm text-[#858585]">Nenhum jogador encontrado.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {comparingWith && (
+        <PlayerComparison playerA={player} playerB={comparingWith} onClose={() => setComparingWith(null)} />
+      )}
     </div>
   );
 }

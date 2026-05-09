@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState, useEffect } from "react";
-import { Search, Bell, Loader2, AlertTriangle, Download } from "lucide-react";
+import { Search, Bell, Loader2, AlertTriangle, Download, Menu } from "lucide-react";
 import { Toaster } from "sonner";
 import { Sidebar, type Section } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
-import { Stats } from "./components/Stats";
-import { History } from "./components/History";
+import { PlayerStats } from "./components/PlayerStats";
+import { Peladas } from "./components/Peladas";
 import { Members } from "./components/Members";
 import { HallOfFame } from "./components/HallOfFame";
 import { CalendarView } from "./components/Calendar";
@@ -15,7 +15,7 @@ import { StoreProvider, useStore } from "./store";
 import { DataProvider, useData } from "./DataContext";
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 
-function Header({ onNavigate }: { onNavigate: (s: Section) => void }) {
+function Header({ onNavigate, onMenuToggle }: { onNavigate: (s: Section) => void, onMenuToggle: () => void }) {
   const { notifications, markAllRead } = useStore();
   const { data } = useData();
   const players = data?.players ?? [];
@@ -37,8 +37,8 @@ function Header({ onNavigate }: { onNavigate: (s: Section) => void }) {
 
   const navTargets: { label: string; section: Section; sub: string }[] = [
     { label: "Dashboard", section: "dashboard", sub: "Visão geral" },
-    { label: "Estatísticas", section: "stats", sub: "Leaderboard" },
-    { label: "Histórico", section: "history", sub: "Partidas anteriores" },
+    { label: "Estatísticas dos Jogadores", section: "stats", sub: "Leaderboard" },
+    { label: "Peladas", section: "history", sub: "Sessões anteriores" },
     { label: "Plantel", section: "members", sub: "Jogadores" },
     { label: "Hall of Fame", section: "hall", sub: "Campeões" },
     { label: "Calendário", section: "calendar", sub: "Próximas peladas" },
@@ -70,7 +70,10 @@ function Header({ onNavigate }: { onNavigate: (s: Section) => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-20 backdrop-blur bg-[#1E1E1E]/90 border-b border-[#3E3E42] px-8 py-4 flex items-center gap-4">
+    <header className="sticky top-0 z-20 backdrop-blur bg-[#1E1E1E]/90 border-b border-[#3E3E42] px-4 md:px-8 py-4 flex items-center gap-2 md:gap-4">
+      <button onClick={onMenuToggle} className="md:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-md bg-[#2D2D30] border border-[#3E3E42] hover:bg-[#3E3E42]">
+        <Menu className="w-4 h-4 text-[#CCCCCC]" />
+      </button>
       <div ref={wrap} className="flex-1 max-w-md relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#858585]" />
         <input
@@ -160,12 +163,12 @@ function Header({ onNavigate }: { onNavigate: (s: Section) => void }) {
         <span className="hidden md:inline">Baixar Dados</span>
       </button>
 
-      <div className="flex items-center gap-3 pl-4 border-l border-[#3E3E42]">
-        <div className="text-right">
+      <div className="flex items-center gap-3 pl-2 md:pl-4 border-l border-[#3E3E42]">
+        <div className="hidden sm:block text-right">
           <div className="text-sm text-white">Você</div>
           <div className="text-[10px] text-[#858585] uppercase tracking-widest">Admin</div>
         </div>
-        <div className="w-9 h-9 rounded-full bg-[#007ACC] flex items-center justify-center text-white text-sm">A</div>
+        <div className="w-9 h-9 rounded-full bg-[#007ACC] flex items-center justify-center shrink-0 text-white text-sm">A</div>
       </div>
     </header>
   );
@@ -219,6 +222,7 @@ function ConfigScreen({ message }: { message?: string }) {
 
 function Inner({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
   const { data, loading, error } = useData();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (loading) return <LoadingScreen />;
   if (error) return <ConfigScreen message={error} />;
@@ -227,13 +231,13 @@ function Inner({ section, setSection }: { section: Section; setSection: (s: Sect
   return (
     <div className="dark min-h-screen bg-[#1E1E1E] text-[#D4D4D4]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <div className="flex">
-        <Sidebar active={section} onChange={setSection} />
-        <main className="flex-1 min-w-0">
-          <Header onNavigate={setSection} />
-          <div className="p-8 max-w-[1400px]">
+        <Sidebar active={section} onChange={(s) => { setSection(s); setMobileOpen(false); }} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+        <main className="flex-1 min-w-0 w-full">
+          <Header onNavigate={setSection} onMenuToggle={() => setMobileOpen(true)} />
+          <div className="p-4 md:p-8 max-w-[1400px]">
             {section === "dashboard" && <Dashboard />}
-            {section === "stats" && <Stats />}
-            {section === "history" && <History />}
+            {section === "stats" && <PlayerStats />}
+            {section === "history" && <Peladas />}
             {section === "members" && <Members />}
             {section === "hall" && <HallOfFame />}
             {section === "calendar" && <CalendarView />}
