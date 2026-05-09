@@ -369,6 +369,7 @@ interface Acc {
   red: number;
   ownGoals: number;
   ratings: number[];
+  evolution_chart: { date: string, nota: number }[];
   // advanced (id-keyed maps)
   assistsGiven: Map<string, number>;     // I assisted someone (key=scorerId)
   assistsReceived: Map<string, number>;  // someone assisted me (key=assisterId)
@@ -398,6 +399,7 @@ function newAcc(id: string, name: string): Acc {
     wins: 0, draws: 0, losses: 0,
     yellow: 0, red: 0, ownGoals: 0,
     ratings: [],
+    evolution_chart: [],
     assistsGiven: new Map(), assistsReceived: new Map(),
     gamesWith: new Map(), winsWith: new Map(), lossesWith: new Map(),
     gamesAgainst: new Map(), winsAgainst: new Map(), lossesAgainst: new Map(),
@@ -781,6 +783,13 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
       });
       acc.ratings.push(matchRating);
 
+      // Rebuild evolution chart dynamically for perfect history
+      const currentFinalNota = calculateFinalRating(acc.ratings, { useBayesian: false });
+      acc.evolution_chart.push({
+        date: normalizeDate(match.date) || normalizeDate(sessionTimestamp) || "",
+        nota: currentFinalNota
+      });
+
       // Teammates / opponents counters (id-keyed)
       for (const tId of teammates) {
         if (!tId || tId === acc.id) continue;
@@ -876,6 +885,7 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
       losses: a.losses,
       totalGames: a.totalGames,
       advanced,
+      ...({ evolution_chart: a.evolution_chart })
     });
   }
 
@@ -915,10 +925,7 @@ export async function fetchAndTranslateData(syncCode: string): Promise<Translate
             maxUnbeatenStreak: sitePlayer.max_unbeaten ?? existing.advanced?.maxUnbeatenStreak ?? 0,
             totalTeamGoals: sitePlayer.total_team_goals ?? existing.advanced?.totalTeamGoals ?? 0,
           };
-          // Also pass evolution chart if it exists
-          if (sitePlayer.evolution_chart) {
-            (existing as any).evolution_chart = sitePlayer.evolution_chart;
-          }
+          // Ignore sitePlayer.evolution_chart since we reconstructed it accurately
         }
       }
     }
