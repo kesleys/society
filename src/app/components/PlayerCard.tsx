@@ -88,18 +88,17 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
   ];
 
   const formatDate = (dateStr: string) => {
-    // Remove zero-width spaces before parsing
-    const cleanDateStr = dateStr.replace(/\u200B/g, '');
-    if (cleanDateStr.includes("/")) return cleanDateStr; // Already formatted (e.g. J.1)
+    if (!dateStr) return "";
+    if (dateStr.includes("/")) return dateStr; // Already formatted (e.g. J.1)
     
     // For monthly grouping "YYYY-MM"
-    if (cleanDateStr.length === 7 && cleanDateStr.indexOf('-') === 4) {
-      const [y, m] = cleanDateStr.split('-');
+    if (dateStr.length === 7 && dateStr.indexOf('-') === 4) {
+      const [y, m] = dateStr.split('-');
       return `${m}/${y.slice(2)}`;
     }
     
     // For full dates
-    const d = new Date(cleanDateStr);
+    const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
       const dd = String(d.getDate()).padStart(2, '0');
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -107,7 +106,7 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
       return `${dd}/${mm}/${yy}`;
     }
     
-    return cleanDateStr;
+    return dateStr;
   };
 
   // Evolution Chart Logic
@@ -116,14 +115,9 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
     if (!rawChart || rawChart.length === 0) return [];
 
     const processedChart = rawChart.map((item, idx) => {
-      // Recharts groups identical X-axis names. To prevent grouping matches on the same day,
-      // we append zero-width spaces (\u200B) to the date string so they visually look identical
-      // but are technically unique strings, forcing Recharts to plot them separately on the X axis.
-      const dateStr = item.date || `J.${idx + 1}`;
-      const uniqueDate = `${dateStr}${'\u200B'.repeat(idx + 1)}`;
       return {
-        date: uniqueDate,
-        rawDate: dateStr, // Keep the original for tooltip formatting if needed
+        date: item.date || `J.${idx + 1}`,
+        rawDate: item.date,
         nota: Number(item.nota) || 0
       };
     });
@@ -135,7 +129,8 @@ export function PlayerCard({ player, onClose }: { player: Player; onClose: () =>
     } else if (evolutionFilter === 'months') {
       const monthly: Record<string, { sum: number, count: number }> = {};
       processedChart.forEach(item => {
-        const month = item.rawDate.substring(0, 7); // YYYY-MM
+        const dateString = item.rawDate || item.date || "";
+        const month = dateString.substring(0, 7); // YYYY-MM
         if (!monthly[month]) monthly[month] = { sum: 0, count: 0 };
         monthly[month].sum += item.nota;
         monthly[month].count += 1;

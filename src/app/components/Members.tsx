@@ -75,7 +75,7 @@ export function Members() {
                 <ImageWithFallback src={p.avatar} alt={p.name} className="w-16 h-16 rounded-md object-cover border border-[#3E3E42]" />
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#1E1E1E] border border-[#3E3E42]">
                   <Shield className="w-3 h-3 text-[#89D185]" />
-                  <span className="text-[#89D185] text-xs tabular-nums">{p.rating}</span>
+                  <span className="text-[#89D185] text-xs tabular-nums">{Number(p.rating).toFixed(1)}</span>
                 </div>
               </div>
               <div className="mt-4 text-white tracking-tight">{p.name}</div>
